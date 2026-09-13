@@ -153,9 +153,13 @@ class MainActivity : AppCompatActivity() {
             resume.append("FILAMENT DETECTE\n")
             resume.append("${resultatMatiere.second}\n")
             resume.append("Code interne : ${resultatMatiere.first}\n\n")
-        } else if (infoFilament.typeDetaille != null || infoFilament.typeFilament != null) {
+                } else if (infoFilament.typeDetaille != null || infoFilament.typeFilament != null) {
             resume.append("FILAMENT DETECTE\n")
-            resume.append("${infoFilament.typeDetaille ?: infoFilament.typeFilament}\n\n")
+            resume.append("${infoFilament.typeDetaille ?: infoFilament.typeFilament}\n")
+            if (infoFilament.codeMatiere != null) {
+                resume.append("Code interne : ${infoFilament.codeMatiere} (pas encore dans ma table de correspondance)\n")
+            }
+            resume.append("\n")
         } else {
             resume.append("Filament non identifie\n\n")
         }
