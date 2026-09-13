@@ -1,5 +1,7 @@
 package com.tomyn.bambureader
 
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.app.AlertDialog
 import android.app.PendingIntent
 import android.content.ClipData
@@ -18,9 +20,11 @@ import android.os.Environment
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -34,18 +38,24 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var nfcAdapter: NfcAdapter
     private lateinit var txtResultat: TextView
+    private lateinit var txtStatut: TextView
     private lateinit var vuCouleur: View
     private lateinit var imgNfc: ImageView
+    private lateinit var layoutLignesInfo: LinearLayout
     private var dernierDumpTexte: String = ""
     private var dernierResume: String = ""
+    private var animationPulse: ObjectAnimator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         txtResultat = findViewById(R.id.txtResultat)
+        txtStatut = findViewById(R.id.txtStatut)
         vuCouleur = findViewById(R.id.vuCouleur)
         imgNfc = findViewById(R.id.imgNfc)
+        layoutLignesInfo = findViewById(R.id.layoutLignesInfo)
+
         val btnExporter = findViewById<Button>(R.id.btnExporter)
         btnExporter.setOnClickListener { exporterDump() }
 
@@ -58,14 +68,32 @@ class MainActivity : AppCompatActivity() {
         val btnHistorique = findViewById<Button>(R.id.btnHistorique)
         btnHistorique.setOnClickListener { afficherHistorique() }
 
+        demarrerPulseNfc()
+
         val adapter = NfcAdapter.getDefaultAdapter(this)
         if (adapter == null) {
-            txtResultat.text = "Ce telephone n'a pas de puce NFC."
+            txtStatut.text = "Ce telephone n'a pas de puce NFC."
             return
         }
         nfcAdapter = adapter
+    }
 
-        txtResultat.text = "Approche une bobine Bambu du dos du telephone..."
+    private fun demarrerPulseNfc() {
+        val animateur = ObjectAnimator.ofFloat(imgNfc, "scaleX", 1f, 1.15f, 1f)
+        animateur.duration = 1200
+        animateur.repeatCount = ValueAnimator.INFINITE
+        val animateurY = ObjectAnimator.ofFloat(imgNfc, "scaleY", 1f, 1.15f, 1f)
+        animateurY.duration = 1200
+        animateurY.repeatCount = ValueAnimator.INFINITE
+        animateur.start()
+        animateurY.start()
+        animationPulse = animateur
+    }
+
+    private fun arreterPulseNfc() {
+        animationPulse?.cancel()
+        imgNfc.scaleX = 1f
+        imgNfc.scaleY = 1f
     }
 
     override fun onResume() {
@@ -97,10 +125,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun ajouterLigneInfo(icone: Int, texte: String) {
+        val ligne = LinearLayout(this)
+        ligne.orientation = LinearLayout.HORIZONTAL
+        ligne.gravity = Gravity.CENTER_VERTICAL
+        val paddingPx = (6 * resources.displayMetrics.density).toInt()
+        ligne.setPadding(0, paddingPx, 0, paddingPx)
+
+        val img = ImageView(this)
+        img.setImageResource(icone)
+        val tailleIcone = (20 * resources.displayMetrics.density).toInt()
+        val paramsImg = LinearLayout.LayoutParams(tailleIcone, tailleIcone)
+        paramsImg.marginEnd = (10 * resources.displayMetrics.density).toInt()
+        img.layoutParams = paramsImg
+
+        val txt = TextView(this)
+        txt.text = texte
+        txt.setTextColor(resources.getColor(R.color.texte_principal, theme))
+        txt.textSize = 14f
+
+        ligne.addView(img)
+        ligne.addView(txt)
+        layoutLignesInfo.addView(ligne)
+    }
+
     private fun lireTag(tag: Tag) {
+        arreterPulseNfc()
+        layoutLignesInfo.removeAllViews()
+        txtResultat.visibility = View.GONE
+
         val mifare = MifareClassic.get(tag)
         if (mifare == null) {
-            txtResultat.text = "Ce tag n'est pas un MIFARE Classic (ou ton telephone ne le supporte pas)."
+            txtStatut.text = "Ce tag n'est pas un MIFARE Classic (ou ton telephone ne le supporte pas)."
+            demarrerPulseNfc()
             return
         }
 
@@ -197,23 +254,18 @@ class MainActivity : AppCompatActivity() {
         val resultatMatiere = infoFilament.codeMatiere?.let { MaterialIdLookup.trouverEtTraduire(it) }
             ?: MaterialIdLookup.trouverEtTraduire(tousLesBlocsLisibles.toString())
 
-        val resume = StringBuilder()
-        resume.append("=== Bambu RFID Reader ===\n")
-        resume.append("UID du tag : $uidHex\n\n")
+        val resumeTexte = StringBuilder()
+        resumeTexte.append("UID du tag : $uidHex\n")
 
-        if (resultatMatiere != null) {
-            resume.append("FILAMENT DETECTE\n")
-            resume.append("${resultatMatiere.second}\n")
-            resume.append("Code interne : ${resultatMatiere.first}\n\n")
-        } else if (infoFilament.typeDetaille != null || infoFilament.typeFilament != null) {
-            resume.append("FILAMENT DETECTE\n")
-            resume.append("${infoFilament.typeDetaille ?: infoFilament.typeFilament}\n")
-            if (infoFilament.codeMatiere != null) {
-                resume.append("Code interne : ${infoFilament.codeMatiere} (pas encore dans ma table de correspondance)\n")
-            }
-            resume.append("\n")
+        val nomFilament: String? = resultatMatiere?.second ?: infoFilament.typeDetaille ?: infoFilament.typeFilament
+        val codeAffiche: String? = resultatMatiere?.first ?: infoFilament.codeMatiere
+
+        if (nomFilament != null) {
+            txtStatut.text = "Filament detecte"
+            ajouterLigneInfo(R.drawable.ic_materiau, nomFilament + if (codeAffiche != null) " ($codeAffiche)" else "")
+            resumeTexte.append("Filament : $nomFilament${if (codeAffiche != null) " ($codeAffiche)" else ""}\n")
         } else {
-            resume.append("Filament non identifie\n\n")
+            txtStatut.text = "Filament non identifie"
         }
 
         if (infoFilament.couleurHex != null) {
@@ -226,22 +278,14 @@ class MainActivity : AppCompatActivity() {
                     val b = hexPur.substring(4, 6).toInt(16)
                     val a = hexPur.substring(6, 8).toInt(16)
                     val resultatCouleur = NomCouleur.trouverNom(hexRGB)
-                    if (resultatCouleur.estExact) {
-                        resume.append("Couleur : ${resultatCouleur.nom}\n")
-                    } else {
-                        resume.append("Couleur : ${resultatCouleur.nom} (approximatif, code non reconnu dans la table officielle)\n")
-                    }
-                    resume.append("Code hexadecimal : ${infoFilament.couleurHex}\n")
+                    val suffixe = if (resultatCouleur.estExact) "" else " (approximatif)"
+                    ajouterLigneInfo(R.drawable.ic_couleur, "${resultatCouleur.nom}$suffixe")
+                    resumeTexte.append("Couleur : ${resultatCouleur.nom}$suffixe (${infoFilament.couleurHex})\n")
                     vuCouleur.backgroundTintList = ColorStateList.valueOf(Color.argb(a, r, g, b))
                     vuCouleur.visibility = View.VISIBLE
                     imgNfc.visibility = View.GONE
-                } else {
-                    resume.append("Couleur : ${infoFilament.couleurHex}\n")
-                    vuCouleur.visibility = View.GONE
-                    imgNfc.visibility = View.VISIBLE
                 }
             } catch (e: Exception) {
-                resume.append("Couleur : ${infoFilament.couleurHex}\n")
                 vuCouleur.visibility = View.GONE
                 imgNfc.visibility = View.VISIBLE
             }
@@ -249,38 +293,37 @@ class MainActivity : AppCompatActivity() {
             vuCouleur.visibility = View.GONE
             imgNfc.visibility = View.VISIBLE
         }
+
         if (infoFilament.poidsGrammes != null && infoFilament.poidsGrammes in 1..10000) {
-            resume.append("Poids bobine : ${infoFilament.poidsGrammes}g\n")
+            ajouterLigneInfo(R.drawable.ic_materiau, "Poids bobine : ${infoFilament.poidsGrammes}g")
+            resumeTexte.append("Poids bobine : ${infoFilament.poidsGrammes}g\n")
         }
         if (infoFilament.tempBuseMin != null && infoFilament.tempBuseMax != null &&
             infoFilament.tempBuseMin in 0..500 && infoFilament.tempBuseMax in 0..500) {
-            resume.append("Temperature buse : ${infoFilament.tempBuseMin}-${infoFilament.tempBuseMax}C\n")
+            ajouterLigneInfo(R.drawable.ic_temperature, "Buse : ${infoFilament.tempBuseMin}-${infoFilament.tempBuseMax}C")
+            resumeTexte.append("Temperature buse : ${infoFilament.tempBuseMin}-${infoFilament.tempBuseMax}C\n")
         }
         if (infoFilament.tempPlateau != null && infoFilament.tempPlateau in 0..200) {
-            resume.append("Temperature plateau : ${infoFilament.tempPlateau}C\n")
+            ajouterLigneInfo(R.drawable.ic_temperature, "Plateau : ${infoFilament.tempPlateau}C")
+            resumeTexte.append("Temperature plateau : ${infoFilament.tempPlateau}C\n")
         }
         if (infoFilament.tempSechage != null && infoFilament.tempSechage in 0..150) {
-            resume.append("Sechage recommande : ${infoFilament.tempSechage}C pendant ${infoFilament.dureeSechage ?: "?"}h\n")
+            ajouterLigneInfo(R.drawable.ic_temperature, "Sechage : ${infoFilament.tempSechage}C / ${infoFilament.dureeSechage ?: "?"}h")
+            resumeTexte.append("Sechage recommande : ${infoFilament.tempSechage}C pendant ${infoFilament.dureeSechage ?: "?"}h\n")
         }
 
-        if (resultatMatiere == null && infoFilament.typeDetaille == null && infoFilament.couleurHex == null) {
-            resume.append("(code matiere introuvable - verifie les erreurs d'authentification\nen exportant le dump complet pour voir le detail)\n")
-        }
+        val detectionReussie = nomFilament != null
 
-        val detectionReussie = resultatMatiere != null || infoFilament.typeDetaille != null || infoFilament.typeFilament != null
-
-        dernierDumpTexte = resume.toString() + "\n\n--- DETAIL TECHNIQUE COMPLET (pour export) ---\n\n" + rapport.toString()
-        dernierResume = resume.toString()
-        txtResultat.text = resume.toString()
+        dernierDumpTexte = resumeTexte.toString() + "\n\n--- DETAIL TECHNIQUE COMPLET (pour export) ---\n\n" + rapport.toString()
+        dernierResume = resumeTexte.toString()
+        txtResultat.text = dernierDumpTexte
 
         if (detectionReussie) {
             vibrerConfirmation()
-            val nomPourHistorique = resultatMatiere?.second
-                ?: infoFilament.typeDetaille
-                ?: infoFilament.typeFilament
-                ?: "Inconnu"
             val couleurPourHistorique = infoFilament.couleurHex ?: ""
-            enregistrerDansHistorique(uidHex, nomPourHistorique, couleurPourHistorique)
+            enregistrerDansHistorique(uidHex, nomFilament ?: "Inconnu", couleurPourHistorique)
+        } else {
+            demarrerPulseNfc()
         }
     }
 
