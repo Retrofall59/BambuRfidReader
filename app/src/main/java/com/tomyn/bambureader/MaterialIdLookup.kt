@@ -1,11 +1,5 @@
 package com.tomyn.bambureader
 
-/**
- * Table de correspondance des codes matiere internes Bambu Lab (ex: "GFA00") vers un nom
- * lisible. Ces codes sont documentes publiquement par la communaute (issue #42 du depot
- * Bambu-Research-Group/RFID-Tag-Guide, et le composant Home Assistant ha-bambulab).
- * Liste non exhaustive : Bambu ajoute regulierement de nouvelles references.
- */
 object MaterialIdLookup {
 
     private val table = mapOf(
@@ -26,6 +20,7 @@ object MaterialIdLookup {
         "GFC00" to "Bambu PC",
         "GFG00" to "Bambu PETG Basic",
         "GFG01" to "Bambu PETG Translucent",
+        "GFG02" to "Bambu PETG HF",
         "GFG50" to "Bambu PETG-CF",
         "GFN01" to "Bambu PA6-CF",
         "GFN03" to "Bambu PA-CF",
@@ -55,7 +50,7 @@ object MaterialIdLookup {
         val regex = Regex("GF[A-Z0-9]{3}")
         val trouve = regex.find(texte) ?: return null
         val code = trouve.value
-        val nom = table[code] ?: "Code inconnu (pas encore dans la table de correspondance)"
+        val nom = table[code] ?: return null
         return Pair(code, nom)
     }
 }
