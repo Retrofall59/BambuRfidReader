@@ -82,6 +82,7 @@ class MainActivity : AppCompatActivity() {
         val uidHex = uid.joinToString("") { String.format("%02X", it) }
 
         val rapport = StringBuilder()
+        val tousLesBlocsLisibles = StringBuilder()
         rapport.append("=== Dump tag Bambu Lab ===\n")
         rapport.append("Date : ${SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.FRANCE).format(Date())}\n")
         rapport.append("UID : $uidHex\n")
@@ -120,6 +121,7 @@ class MainActivity : AppCompatActivity() {
                         val donnees = mifare.readBlock(numBloc)
                         val hex = donnees.joinToString(" ") { String.format("%02X", it) }
                         rapport.append("  Bloc $numBloc : $hex\n")
+                        tousLesBlocsLisibles.append(String(donnees, Charsets.ISO_8859_1))
                     } catch (e: Exception) {
                         rapport.append("  Bloc $numBloc : erreur de lecture (${e.message})\n")
                     }
@@ -133,8 +135,21 @@ class MainActivity : AppCompatActivity() {
             rapport.append("(Si ca echoue systematiquement des la connexion, ton telephone ne supporte probablement pas nativement le MIFARE Classic - limitation materielle, pas un bug de l'appli.)\n")
         }
 
-        dernierDumpTexte = rapport.toString()
-        txtResultat.text = dernierDumpTexte
+        val resultatMatiere = MaterialIdLookup.trouverEtTraduire(tousLesBlocsLisibles.toString())
+        val resume = StringBuilder()
+        resume.append("=== Bambu RFID Reader ===\n")
+        resume.append("UID du tag : $uidHex\n\n")
+        if (resultatMatiere != null) {
+            resume.append("FILAMENT DETECTE\n")
+            resume.append("${resultatMatiere.second}\n")
+            resume.append("Code interne : ${resultatMatiere.first}\n")
+        } else {
+            resume.append("Filament non identifie\n")
+            resume.append("(code matiere introuvable - verifie les erreurs d'authentification\nen exportant le dump complet pour voir le detail)\n")
+        }
+
+        dernierDumpTexte = resume.toString() + "\n\n--- DETAIL TECHNIQUE COMPLET (pour export) ---\n\n" + rapport.toString()
+        txtResultat.text = resume.toString()
     }
 
     private fun exporterDump() {
