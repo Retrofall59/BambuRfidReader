@@ -22,6 +22,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.Gravity
 import android.view.View
+import android.view.animation.AnimationUtils
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -147,6 +148,10 @@ class MainActivity : AppCompatActivity() {
         ligne.addView(img)
         ligne.addView(txt)
         layoutLignesInfo.addView(ligne)
+
+        val animation = AnimationUtils.loadAnimation(this, R.anim.apparition_ligne)
+        animation.startOffset = (layoutLignesInfo.childCount - 1) * 90L
+        ligne.startAnimation(animation)
     }
 
     private fun lireTag(tag: Tag) {
