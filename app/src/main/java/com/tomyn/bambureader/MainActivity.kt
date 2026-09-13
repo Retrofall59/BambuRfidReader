@@ -3,11 +3,13 @@ package com.tomyn.bambureader
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Color
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.MifareClassic
 import android.os.Bundle
 import android.os.Environment
+import android.view.View
 import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
@@ -22,6 +24,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var nfcAdapter: NfcAdapter
     private lateinit var txtResultat: TextView
+    private lateinit var vuCouleur: View
     private var dernierDumpTexte: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,6 +32,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         txtResultat = findViewById(R.id.txtResultat)
+        vuCouleur = findViewById(R.id.vuCouleur)
         val btnExporter = findViewById<Button>(R.id.btnExporter)
         btnExporter.setOnClickListener { exporterDump() }
 
@@ -83,6 +87,7 @@ class MainActivity : AppCompatActivity() {
 
         val rapport = StringBuilder()
         val tousLesBlocsLisibles = StringBuilder()
+        val blocsParNumero = mutableMapOf<Int, ByteArray>()
         rapport.append("=== Dump tag Bambu Lab ===\n")
         rapport.append("Date : ${SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.FRANCE).format(Date())}\n")
         rapport.append("UID : $uidHex\n")
@@ -122,6 +127,7 @@ class MainActivity : AppCompatActivity() {
                         val hex = donnees.joinToString(" ") { String.format("%02X", it) }
                         rapport.append("  Bloc $numBloc : $hex\n")
                         tousLesBlocsLisibles.append(String(donnees, Charsets.ISO_8859_1))
+                        blocsParNumero[numBloc] = donnees
                     } catch (e: Exception) {
                         rapport.append("  Bloc $numBloc : erreur de lecture (${e.message})\n")
                     }
@@ -135,16 +141,58 @@ class MainActivity : AppCompatActivity() {
             rapport.append("(Si ca echoue systematiquement des la connexion, ton telephone ne supporte probablement pas nativement le MIFARE Classic - limitation materielle, pas un bug de l'appli.)\n")
         }
 
-        val resultatMatiere = MaterialIdLookup.trouverEtTraduire(tousLesBlocsLisibles.toString())
+        val infoFilament = BambuTagDecoder.decoder(blocsParNumero)
+        val resultatMatiere = infoFilament.codeMatiere?.let { MaterialIdLookup.trouverEtTraduire(it) }
+            ?: MaterialIdLookup.trouverEtTraduire(tousLesBlocsLisibles.toString())
+
         val resume = StringBuilder()
         resume.append("=== Bambu RFID Reader ===\n")
         resume.append("UID du tag : $uidHex\n\n")
+
         if (resultatMatiere != null) {
             resume.append("FILAMENT DETECTE\n")
             resume.append("${resultatMatiere.second}\n")
-            resume.append("Code interne : ${resultatMatiere.first}\n")
+            resume.append("Code interne : ${resultatMatiere.first}\n\n")
+        } else if (infoFilament.typeDetaille != null || infoFilament.typeFilament != null) {
+            resume.append("FILAMENT DETECTE\n")
+            resume.append("${infoFilament.typeDetaille ?: infoFilament.typeFilament}\n\n")
         } else {
-            resume.append("Filament non identifie\n")
+            resume.append("Filament non identifie\n\n")
+        }
+
+        if (infoFilament.couleurHex != null) {
+            resume.append("Couleur : ${infoFilament.couleurHex}\n")
+            try {
+                val hexPur = infoFilament.couleurHex.removePrefix("#")
+                if (hexPur.length == 8) {
+                    val r = hexPur.substring(0, 2).toInt(16)
+                    val g = hexPur.substring(2, 4).toInt(16)
+                    val b = hexPur.substring(4, 6).toInt(16)
+                    val a = hexPur.substring(6, 8).toInt(16)
+                    vuCouleur.setBackgroundColor(Color.argb(a, r, g, b))
+                    vuCouleur.visibility = View.VISIBLE
+                }
+            } catch (e: Exception) {
+                vuCouleur.visibility = View.GONE
+            }
+        } else {
+            vuCouleur.visibility = View.GONE
+        }
+        if (infoFilament.poidsGrammes != null && infoFilament.poidsGrammes in 1..10000) {
+            resume.append("Poids bobine : ${infoFilament.poidsGrammes}g\n")
+        }
+        if (infoFilament.tempBuseMin != null && infoFilament.tempBuseMax != null &&
+            infoFilament.tempBuseMin in 0..500 && infoFilament.tempBuseMax in 0..500) {
+            resume.append("Temperature buse : ${infoFilament.tempBuseMin}-${infoFilament.tempBuseMax}C\n")
+        }
+        if (infoFilament.tempPlateau != null && infoFilament.tempPlateau in 0..200) {
+            resume.append("Temperature plateau : ${infoFilament.tempPlateau}C\n")
+        }
+        if (infoFilament.tempSechage != null && infoFilament.tempSechage in 0..150) {
+            resume.append("Sechage recommande : ${infoFilament.tempSechage}C pendant ${infoFilament.dureeSechage ?: "?"}h\n")
+        }
+
+        if (resultatMatiere == null && infoFilament.typeDetaille == null && infoFilament.couleurHex == null) {
             resume.append("(code matiere introuvable - verifie les erreurs d'authentification\nen exportant le dump complet pour voir le detail)\n")
         }
 
