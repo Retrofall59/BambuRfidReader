@@ -1,5 +1,11 @@
 package com.tomyn.bambureader
 
+/**
+ * Table de correspondance des codes matiere internes Bambu Lab (ex: "GFA00") vers un nom
+ * lisible. Ces codes sont documentes publiquement par la communaute (issue #42 du depot
+ * Bambu-Research-Group/RFID-Tag-Guide, et le composant Home Assistant ha-bambulab).
+ * Liste non exhaustive : Bambu ajoute regulierement de nouvelles references.
+ */
 object MaterialIdLookup {
 
     private val table = mapOf(
@@ -46,6 +52,12 @@ object MaterialIdLookup {
         "GFU99" to "TPU generique"
     )
 
+    /**
+     * Cherche un code matiere (GFxxx) dans un texte donne et retourne son nom lisible SI ce
+     * code est connu dans la table ci-dessus. Si le code est trouve mais pas dans la table,
+     * retourne null (plutot qu'un texte "inconnu") pour que l'appelant puisse se rabattre sur
+     * le nom en toutes lettres deja present ailleurs sur le tag (bloc "type detaille").
+     */
     fun trouverEtTraduire(texte: String): Pair<String, String>? {
         val regex = Regex("GF[A-Z0-9]{3}")
         val trouve = regex.find(texte) ?: return null

@@ -1,75 +1,131 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Bambu RFID Reader"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:paddingBottom="12dp" />
-
-    <Button
-        android:id="@+id/btnExporter"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Exporter le dernier dump" />
+    android:background="@color/fond_clair"
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="8dp">
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <Button
-            android:id="@+id/btnCopier"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Copier" />
-
-        <Button
-            android:id="@+id/btnPartager"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:text="Partager" />
-
-        <Button
-            android:id="@+id/btnHistorique"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:text="Historique" />
-    </LinearLayout>
-
-    <View
-        android:id="@+id/vuCouleur"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="12dp"
-        android:visibility="gone"
-        android:background="#CCCCCC" />
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="12dp">
-
-        <TextView
-            android:id="@+id/txtResultat"
+        <!-- En-tete avec logo -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fontFamily="monospace"
-            android:textIsSelectable="true"
-            android:textSize="12sp" />
-    </ScrollView>
-</LinearLayout>
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="16dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_bobine"
+                android:contentDescription="Logo bobine" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:text="Bambu RFID Reader"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="@color/texte_principal" />
+        </LinearLayout>
+
+        <!-- Carte principale de resultat -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/fond_carte"
+            android:padding="20dp"
+            android:gravity="center_horizontal">
+
+            <ImageView
+                android:id="@+id/imgNfc"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:src="@drawable/ic_nfc"
+                android:contentDescription="Icone NFC"
+                android:layout_marginBottom="8dp" />
+
+            <View
+                android:id="@+id/vuCouleur"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginBottom="12dp"
+                android:visibility="gone"
+                android:background="@drawable/forme_couleur" />
+
+            <TextView
+                android:id="@+id/txtResultat"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif"
+                android:textIsSelectable="true"
+                android:textColor="@color/texte_principal"
+                android:textSize="14sp"
+                android:lineSpacingExtra="4dp"
+                android:text="Approche une bobine Bambu du dos du telephone..." />
+        </LinearLayout>
+
+        <!-- Bouton principal -->
+        <Button
+            android:id="@+id/btnExporter"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/fond_bouton_principal"
+            android:text="Exporter le dernier dump"
+            android:textColor="@color/carte_blanc"
+            android:textAllCaps="false"
+            android:elevation="2dp" />
+
+        <!-- Boutons secondaires -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="10dp">
+
+            <Button
+                android:id="@+id/btnCopier"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_weight="1"
+                android:background="@drawable/fond_bouton_secondaire"
+                android:text="Copier"
+                android:textColor="@color/bambu_teal_fonce"
+                android:textAllCaps="false"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnPartager"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/fond_bouton_secondaire"
+                android:text="Partager"
+                android:textColor="@color/bambu_teal_fonce"
+                android:textAllCaps="false"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnHistorique"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/fond_bouton_secondaire"
+                android:text="Historique"
+                android:textColor="@color/bambu_teal_fonce"
+                android:textAllCaps="false"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

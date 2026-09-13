@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.res.ColorStateList
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
@@ -19,6 +20,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.View
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -33,6 +35,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var nfcAdapter: NfcAdapter
     private lateinit var txtResultat: TextView
     private lateinit var vuCouleur: View
+    private lateinit var imgNfc: ImageView
     private var dernierDumpTexte: String = ""
     private var dernierResume: String = ""
 
@@ -42,6 +45,7 @@ class MainActivity : AppCompatActivity() {
 
         txtResultat = findViewById(R.id.txtResultat)
         vuCouleur = findViewById(R.id.vuCouleur)
+        imgNfc = findViewById(R.id.imgNfc)
         val btnExporter = findViewById<Button>(R.id.btnExporter)
         btnExporter.setOnClickListener { exporterDump() }
 
@@ -228,17 +232,22 @@ class MainActivity : AppCompatActivity() {
                         resume.append("Couleur : ${resultatCouleur.nom} (approximatif, code non reconnu dans la table officielle)\n")
                     }
                     resume.append("Code hexadecimal : ${infoFilament.couleurHex}\n")
-                    vuCouleur.setBackgroundColor(Color.argb(a, r, g, b))
+                    vuCouleur.backgroundTintList = ColorStateList.valueOf(Color.argb(a, r, g, b))
                     vuCouleur.visibility = View.VISIBLE
+                    imgNfc.visibility = View.GONE
                 } else {
                     resume.append("Couleur : ${infoFilament.couleurHex}\n")
+                    vuCouleur.visibility = View.GONE
+                    imgNfc.visibility = View.VISIBLE
                 }
             } catch (e: Exception) {
                 resume.append("Couleur : ${infoFilament.couleurHex}\n")
                 vuCouleur.visibility = View.GONE
+                imgNfc.visibility = View.VISIBLE
             }
         } else {
             vuCouleur.visibility = View.GONE
+            imgNfc.visibility = View.VISIBLE
         }
         if (infoFilament.poidsGrammes != null && infoFilament.poidsGrammes in 1..10000) {
             resume.append("Poids bobine : ${infoFilament.poidsGrammes}g\n")

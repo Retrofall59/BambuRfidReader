@@ -8,6 +8,7 @@
     <application
         android:allowBackup="true"
         android:label="Bambu RFID Reader"
+        android:icon="@mipmap/ic_launcher"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar">
 
         <activity

@@ -2,10 +2,16 @@ package com.tomyn.bambureader
 
 import kotlin.math.sqrt
 
+/**
+ * Deux niveaux de recherche du nom de couleur :
+ * 1. Table officielle Bambu (PLA Basic) : correspondance EXACTE sur le code hexadecimal
+ * 2. Si pas de correspondance exacte : couleur usuelle la plus proche par distance RGB
+ */
 object NomCouleur {
 
     private data class CouleurNommee(val nom: String, val r: Int, val g: Int, val b: Int)
 
+    // Table officielle Bambu Lab (PLA Basic), source : PDF Bambu_PLA_Basic_Hex_Code.pdf
     private val tableOfficielle = mapOf(
         "FFFFFF" to "Jade White (Bambu, officiel)",
         "F7E6DE" to "Beige (Bambu, officiel)",
@@ -39,6 +45,7 @@ object NomCouleur {
         "000000" to "Black (Bambu, officiel)"
     )
 
+    // Couleurs usuelles pour l'approximation de secours (si pas de correspondance exacte)
     private val couleursApprox = listOf(
         CouleurNommee("Blanc", 255, 255, 255),
         CouleurNommee("Noir", 0, 0, 0),
@@ -72,6 +79,9 @@ object NomCouleur {
 
     data class ResultatCouleur(val nom: String, val estExact: Boolean)
 
+    /**
+     * @param hexRGB les 6 caracteres hexadecimaux R,G,B (sans le # ni le canal alpha)
+     */
     fun trouverNom(hexRGB: String): ResultatCouleur {
         val hexNormalise = hexRGB.uppercase()
         tableOfficielle[hexNormalise]?.let {
