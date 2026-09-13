@@ -1,14 +1,22 @@
 package com.tomyn.bambureader
 
+import android.app.AlertDialog
 import android.app.PendingIntent
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.MifareClassic
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.view.View
 import android.widget.Button
 import android.widget.ScrollView
@@ -26,6 +34,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var txtResultat: TextView
     private lateinit var vuCouleur: View
     private var dernierDumpTexte: String = ""
+    private var dernierResume: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,6 +44,15 @@ class MainActivity : AppCompatActivity() {
         vuCouleur = findViewById(R.id.vuCouleur)
         val btnExporter = findViewById<Button>(R.id.btnExporter)
         btnExporter.setOnClickListener { exporterDump() }
+
+        val btnCopier = findViewById<Button>(R.id.btnCopier)
+        btnCopier.setOnClickListener { copierResume() }
+
+        val btnPartager = findViewById<Button>(R.id.btnPartager)
+        btnPartager.setOnClickListener { partagerResume() }
+
+        val btnHistorique = findViewById<Button>(R.id.btnHistorique)
+        btnHistorique.setOnClickListener { afficherHistorique() }
 
         val adapter = NfcAdapter.getDefaultAdapter(this)
         if (adapter == null) {
@@ -96,7 +114,21 @@ class MainActivity : AppCompatActivity() {
         val clesA = BambuKeyDeriver.deriverClesA(uid)
 
         try {
-            mifare.connect()
+            var connecte = false
+            var derniereErreurConnexion: Exception? = null
+            for (tentative in 1..3) {
+                try {
+                    mifare.connect()
+                    connecte = true
+                    break
+                } catch (e: Exception) {
+                    derniereErreurConnexion = e
+                    try { Thread.sleep(150) } catch (ignored: InterruptedException) {}
+                }
+            }
+            if (!connecte) {
+                throw derniereErreurConnexion ?: Exception("Connexion impossible apres 3 tentatives")
+            }
 
             for (secteur in 0 until mifare.sectorCount) {
                 val cle = if (secteur < clesA.size) clesA[secteur] else null
@@ -105,9 +137,14 @@ class MainActivity : AppCompatActivity() {
                     continue
                 }
 
-                val authOk = try {
-                    mifare.authenticateSectorWithKeyA(secteur, cle)
-                } catch (e: Exception) {
+                val authOk = run {
+                    for (tentative in 1..2) {
+                        try {
+                            if (mifare.authenticateSectorWithKeyA(secteur, cle)) return@run true
+                        } catch (e: Exception) {
+                            try { Thread.sleep(80) } catch (ignored: InterruptedException) {}
+                        }
+                    }
                     false
                 }
 
@@ -123,7 +160,18 @@ class MainActivity : AppCompatActivity() {
                 for (i in 0 until nbBlocsSecteur) {
                     val numBloc = premierBlocSecteur + i
                     try {
-                        val donnees = mifare.readBlock(numBloc)
+                        var donnees: ByteArray? = null
+                        var derniereErreurBloc: Exception? = null
+                        for (tentative in 1..2) {
+                            try {
+                                donnees = mifare.readBlock(numBloc)
+                                break
+                            } catch (e: Exception) {
+                                derniereErreurBloc = e
+                                try { Thread.sleep(80) } catch (ignored: InterruptedException) {}
+                            }
+                        }
+                        if (donnees == null) throw derniereErreurBloc ?: Exception("echec de lecture")
                         val hex = donnees.joinToString(" ") { String.format("%02X", it) }
                         rapport.append("  Bloc $numBloc : $hex\n")
                         tousLesBlocsLisibles.append(String(donnees, Charsets.ISO_8859_1))
@@ -153,7 +201,7 @@ class MainActivity : AppCompatActivity() {
             resume.append("FILAMENT DETECTE\n")
             resume.append("${resultatMatiere.second}\n")
             resume.append("Code interne : ${resultatMatiere.first}\n\n")
-                } else if (infoFilament.typeDetaille != null || infoFilament.typeFilament != null) {
+        } else if (infoFilament.typeDetaille != null || infoFilament.typeFilament != null) {
             resume.append("FILAMENT DETECTE\n")
             resume.append("${infoFilament.typeDetaille ?: infoFilament.typeFilament}\n")
             if (infoFilament.codeMatiere != null) {
@@ -210,8 +258,104 @@ class MainActivity : AppCompatActivity() {
             resume.append("(code matiere introuvable - verifie les erreurs d'authentification\nen exportant le dump complet pour voir le detail)\n")
         }
 
+        val detectionReussie = resultatMatiere != null || infoFilament.typeDetaille != null || infoFilament.typeFilament != null
+
         dernierDumpTexte = resume.toString() + "\n\n--- DETAIL TECHNIQUE COMPLET (pour export) ---\n\n" + rapport.toString()
+        dernierResume = resume.toString()
         txtResultat.text = resume.toString()
+
+        if (detectionReussie) {
+            vibrerConfirmation()
+            val nomPourHistorique = resultatMatiere?.second
+                ?: infoFilament.typeDetaille
+                ?: infoFilament.typeFilament
+                ?: "Inconnu"
+            val couleurPourHistorique = infoFilament.couleurHex ?: ""
+            enregistrerDansHistorique(uidHex, nomPourHistorique, couleurPourHistorique)
+        }
+    }
+
+    private fun vibrerConfirmation() {
+        try {
+            val vibrator: Vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val manager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                manager.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(150, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(150)
+            }
+        } catch (e: Exception) {
+            // Pas grave si la vibration echoue, ce n'est qu'un confort
+        }
+    }
+
+    private fun enregistrerDansHistorique(uid: String, nom: String, couleurHex: String) {
+        try {
+            val fichier = File(getExternalFilesDir(null), "historique_scans.csv")
+            val ligne = "${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRANCE).format(Date())};$uid;$nom;$couleurHex\n"
+            fichier.appendText(ligne)
+        } catch (e: Exception) {
+            // Pas grave si l'ecriture de l'historique echoue
+        }
+    }
+
+    private fun afficherHistorique() {
+        try {
+            val fichier = File(getExternalFilesDir(null), "historique_scans.csv")
+            if (!fichier.exists() || fichier.readText().isBlank()) {
+                AlertDialog.Builder(this)
+                    .setTitle("Historique des scans")
+                    .setMessage("Aucun scan enregistre pour l'instant.")
+                    .setPositiveButton("OK", null)
+                    .show()
+                return
+            }
+            val lignes = fichier.readLines().reversed()
+            val texteAffiche = lignes.joinToString("\n\n") { ligne ->
+                val parts = ligne.split(";")
+                if (parts.size >= 3) {
+                    "${parts[0]}\n${parts[2]}${if (parts.size >= 4 && parts[3].isNotBlank()) " (${parts[3]})" else ""}"
+                } else ligne
+            }
+            AlertDialog.Builder(this)
+                .setTitle("Historique des scans (${lignes.size})")
+                .setMessage(texteAffiche)
+                .setPositiveButton("Fermer", null)
+                .setNegativeButton("Vider l'historique") { _, _ ->
+                    fichier.delete()
+                    Toast.makeText(this, "Historique efface.", Toast.LENGTH_SHORT).show()
+                }
+                .show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Erreur lecture historique : ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun copierResume() {
+        if (dernierResume.isEmpty()) {
+            Toast.makeText(this, "Rien a copier pour l'instant, scanne d'abord un tag.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("Resultat Bambu RFID", dernierResume))
+        Toast.makeText(this, "Copie dans le presse-papier.", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun partagerResume() {
+        if (dernierResume.isEmpty()) {
+            Toast.makeText(this, "Rien a partager pour l'instant, scanne d'abord un tag.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val intent = Intent(Intent.ACTION_SEND)
+        intent.type = "text/plain"
+        intent.putExtra(Intent.EXTRA_TEXT, dernierResume)
+        startActivity(Intent.createChooser(intent, "Partager le resultat"))
     }
 
     private fun exporterDump() {
