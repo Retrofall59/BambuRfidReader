@@ -59,6 +59,17 @@ class MainActivity : AppCompatActivity() {
     private var dernierDumpTexte: String = ""
     private var dernierResume: String = ""
     private var dernierNomFilament: String? = null
+
+    data class EtiquetteEnAttente(
+        val nomFilament: String,
+        val nomCouleur: String?,
+        val couleurArgb: Int?,
+        val poidsGrammes: Int?,
+        val tempBuseTexte: String?,
+        val tempPlateau: Int?
+    )
+    private lateinit var btnImprimerEtiquette: Button
+    private val filesAttenteEtiquettes = mutableListOf<EtiquetteEnAttente>()
     private var dernierNomCouleur: String? = null
     private var dernierNomCouleurEtiquette: String? = null
     private var dernierCouleurArgb: Int? = null
@@ -80,8 +91,9 @@ class MainActivity : AppCompatActivity() {
         val btnExporter = findViewById<Button>(R.id.btnExporter)
         btnExporter.setOnClickListener { exporterDump() }
 
-        val btnImprimerEtiquette = findViewById<Button>(R.id.btnImprimerEtiquette)
+        btnImprimerEtiquette = findViewById(R.id.btnImprimerEtiquette)
         btnImprimerEtiquette.setOnClickListener { imprimerEtiquette() }
+        mettreAJourBoutonImpression()
 
         val btnCopier = findViewById<Button>(R.id.btnCopier)
         btnCopier.setOnClickListener { copierResume() }
@@ -377,8 +389,29 @@ class MainActivity : AppCompatActivity() {
             vibrerConfirmation()
             val couleurPourHistorique = infoFilament.couleurHex ?: ""
             enregistrerDansHistorique(uidHex, nomFilament ?: "Inconnu", couleurPourHistorique)
+
+            filesAttenteEtiquettes.add(
+                EtiquetteEnAttente(
+                    nomFilament = nomFilament ?: "Filament inconnu",
+                    nomCouleur = dernierNomCouleurEtiquette,
+                    couleurArgb = dernierCouleurArgb,
+                    poidsGrammes = dernierPoidsGrammes,
+                    tempBuseTexte = dernierTempBuseTexte,
+                    tempPlateau = dernierTempPlateau
+                )
+            )
+            mettreAJourBoutonImpression()
         } else {
             demarrerPulseNfc()
+        }
+    }
+
+    private fun mettreAJourBoutonImpression() {
+        val n = filesAttenteEtiquettes.size
+        btnImprimerEtiquette.text = if (n <= 1) {
+            "Imprimer l'etiquette"
+        } else {
+            "Imprimer les etiquettes ($n)"
         }
     }
 
@@ -466,10 +499,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun imprimerEtiquette() {
-        if (dernierNomFilament == null) {
-            Toast.makeText(this, "Aucun filament identifie pour l'instant, scanne d'abord un tag.", Toast.LENGTH_SHORT).show()
+        if (filesAttenteEtiquettes.isEmpty()) {
+            Toast.makeText(this, "Aucune etiquette en attente, scanne d'abord un tag.", Toast.LENGTH_SHORT).show()
             return
         }
+
+        // On fige la liste au moment de l'impression : si un nouveau scan arrive pendant
+        // que la boite de dialogue systeme est ouverte, il ne sera pas perdu, juste pas
+        // inclus dans CE job d'impression (il restera dans la file pour la prochaine fois).
+        val etiquettesAImprimer = filesAttenteEtiquettes.toList()
 
         val printManager = getSystemService(Context.PRINT_SERVICE) as PrintManager
         val adapter = object : PrintDocumentAdapter() {
@@ -487,9 +525,10 @@ class MainActivity : AppCompatActivity() {
                     callback.onLayoutCancelled()
                     return
                 }
-                val info = PrintDocumentInfo.Builder("etiquette_filament.pdf")
+                val nbPages = Math.ceil(etiquettesAImprimer.size.toDouble() / ETIQUETTES_PAR_PAGE).toInt().coerceAtLeast(1)
+                val info = PrintDocumentInfo.Builder("etiquettes_filament.pdf")
                     .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
-                    .setPageCount(1)
+                    .setPageCount(nbPages)
                     .build()
                 callback.onLayoutFinished(info, true)
             }
@@ -500,10 +539,24 @@ class MainActivity : AppCompatActivity() {
                 cancellationSignal: CancellationSignal?,
                 callback: WriteResultCallback
             ) {
-                val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create()
-                val page = document!!.startPage(pageInfo)
-                dessinerEtiquette(page.canvas)
-                document!!.finishPage(page)
+                var index = 0
+                while (index < etiquettesAImprimer.size) {
+                    val pageInfo = PdfDocument.PageInfo.Builder(595, 842, index / ETIQUETTES_PAR_PAGE + 1).create()
+                    val page = document!!.startPage(pageInfo)
+                    val lotDeCettePage = etiquettesAImprimer.subList(
+                        index,
+                        minOf(index + ETIQUETTES_PAR_PAGE, etiquettesAImprimer.size)
+                    )
+                    lotDeCettePage.forEachIndexed { positionDansPage, etiquette ->
+                        val colonne = positionDansPage % COLONNES_GRILLE
+                        val ligne = positionDansPage / COLONNES_GRILLE
+                        val x = MARGE_GRILLE + colonne * LARGEUR_CELLULE
+                        val y = MARGE_GRILLE + ligne * HAUTEUR_CELLULE
+                        dessinerEtiquette(page.canvas, etiquette, x, y)
+                    }
+                    document!!.finishPage(page)
+                    index += ETIQUETTES_PAR_PAGE
+                }
 
                 try {
                     document!!.writeTo(FileOutputStream(destination.fileDescriptor))
@@ -517,16 +570,30 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        printManager.print("Etiquette filament Bambu", adapter, PrintAttributes.Builder().build())
+        printManager.print("Etiquettes filament Bambu", adapter, PrintAttributes.Builder().build())
+
+        // On retire de la file uniquement ce qu'on vient d'envoyer a l'impression (pas ce qui
+        // aurait ete ajoute entre-temps).
+        filesAttenteEtiquettes.removeAll(etiquettesAImprimer)
+        mettreAJourBoutonImpression()
     }
 
-    private fun dessinerEtiquette(canvas: Canvas) {
-        val margeGauche = 60f
-        val y = 90f
+    // Grille d'etiquettes sur une page A4 (595x842 points) : 3 colonnes x 7 lignes = 21
+    // etiquettes par page, a decouper aux ciseaux une fois imprimees.
+    companion object {
+        const val COLONNES_GRILLE = 3
+        const val LIGNES_GRILLE = 7
+        const val ETIQUETTES_PAR_PAGE = COLONNES_GRILLE * LIGNES_GRILLE
+        const val MARGE_GRILLE = 25f
+        const val LARGEUR_CELLULE = (595f - 2 * MARGE_GRILLE) / COLONNES_GRILLE
+        const val HAUTEUR_CELLULE = (842f - 2 * MARGE_GRILLE) / LIGNES_GRILLE
+    }
 
-        // Taille reelle d'une petite etiquette (environ 6cm x 3.7cm)
-        val largeurEtiquette = 170f
-        val hauteurEtiquette = 105f
+    private fun dessinerEtiquette(canvas: Canvas, etiquette: EtiquetteEnAttente, margeGauche: Float, y: Float) {
+        // Taille reelle d'une petite etiquette (environ 6cm x 3.7cm), avec un peu de marge
+        // interne par rapport a la cellule de grille pour laisser un espace de decoupe.
+        val largeurEtiquette = LARGEUR_CELLULE - 8f
+        val hauteurEtiquette = HAUTEUR_CELLULE - 8f
 
         val paintTitre = Paint().apply {
             color = android.graphics.Color.GRAY
@@ -557,11 +624,11 @@ class MainActivity : AppCompatActivity() {
         canvas.drawText("Bambu RFID Reader", margeInterne, yInterne, paintTitre)
 
         yInterne += 14f
-        canvas.drawText(dernierNomFilament ?: "Filament inconnu", margeInterne, yInterne, paintMatiere)
+        canvas.drawText(etiquette.nomFilament, margeInterne, yInterne, paintMatiere)
 
         yInterne += 16f
-        if (dernierCouleurArgb != null) {
-            paintSwatch.color = dernierCouleurArgb!!
+        if (etiquette.couleurArgb != null) {
+            paintSwatch.color = etiquette.couleurArgb
             canvas.drawCircle(margeInterne + 5f, yInterne - 3f, 5.5f, paintSwatch)
             val paintCercleBordure = Paint().apply {
                 color = android.graphics.Color.LTGRAY
@@ -569,22 +636,22 @@ class MainActivity : AppCompatActivity() {
                 strokeWidth = 0.8f
             }
             canvas.drawCircle(margeInterne + 5f, yInterne - 3f, 5.5f, paintCercleBordure)
-            canvas.drawText(dernierNomCouleurEtiquette ?: "", margeInterne + 16f, yInterne, paintTexte)
+            canvas.drawText(etiquette.nomCouleur ?: "", margeInterne + 16f, yInterne, paintTexte)
             yInterne += 12f
         }
 
-        if (dernierPoidsGrammes != null) {
-            canvas.drawText("Poids : ${dernierPoidsGrammes}g", margeInterne, yInterne, paintTexte)
+        if (etiquette.poidsGrammes != null) {
+            canvas.drawText("Poids : ${etiquette.poidsGrammes}g", margeInterne, yInterne, paintTexte)
             yInterne += 11f
         }
 
-        if (dernierTempBuseTexte != null) {
-            canvas.drawText("Buse : $dernierTempBuseTexte", margeInterne, yInterne, paintTexte)
+        if (etiquette.tempBuseTexte != null) {
+            canvas.drawText("Buse : ${etiquette.tempBuseTexte}", margeInterne, yInterne, paintTexte)
             yInterne += 11f
         }
 
-        if (dernierTempPlateau != null) {
-            canvas.drawText("Plateau : ${dernierTempPlateau}C", margeInterne, yInterne, paintTexte)
+        if (etiquette.tempPlateau != null) {
+            canvas.drawText("Plateau : ${etiquette.tempPlateau}C", margeInterne, yInterne, paintTexte)
         }
 
         val paintDate = Paint().apply {
