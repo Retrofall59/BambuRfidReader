@@ -10,16 +10,27 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.pdf.PdfDocument
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.MifareClassic
 import android.os.Build
 import android.os.Bundle
+import android.os.CancellationSignal
 import android.os.Environment
+import android.os.ParcelFileDescriptor
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.print.PageRange
+import android.print.PrintAttributes
+import android.print.PrintDocumentAdapter
+import android.print.PrintDocumentInfo
+import android.print.PrintManager
 import android.view.Gravity
 import android.view.View
 import android.view.animation.AnimationUtils
@@ -31,6 +42,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -45,6 +58,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var layoutLignesInfo: LinearLayout
     private var dernierDumpTexte: String = ""
     private var dernierResume: String = ""
+    private var dernierNomFilament: String? = null
+    private var dernierNomCouleur: String? = null
+    private var dernierCouleurArgb: Int? = null
+    private var dernierPoidsGrammes: Int? = null
+    private var dernierTempBuseTexte: String? = null
+    private var dernierTempPlateau: Int? = null
     private var animationPulse: ObjectAnimator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,6 +78,9 @@ class MainActivity : AppCompatActivity() {
 
         val btnExporter = findViewById<Button>(R.id.btnExporter)
         btnExporter.setOnClickListener { exporterDump() }
+
+        val btnImprimerEtiquette = findViewById<Button>(R.id.btnImprimerEtiquette)
+        btnImprimerEtiquette.setOnClickListener { imprimerEtiquette() }
 
         val btnCopier = findViewById<Button>(R.id.btnCopier)
         btnCopier.setOnClickListener { copierResume() }
@@ -269,8 +291,10 @@ class MainActivity : AppCompatActivity() {
             txtStatut.text = "Filament detecte"
             ajouterLigneInfo(R.drawable.ic_materiau, nomFilament + if (codeAffiche != null) " ($codeAffiche)" else "")
             resumeTexte.append("Filament : $nomFilament${if (codeAffiche != null) " ($codeAffiche)" else ""}\n")
+            dernierNomFilament = nomFilament
         } else {
             txtStatut.text = "Filament non identifie"
+            dernierNomFilament = null
         }
 
         if (infoFilament.couleurHex != null) {
@@ -289,28 +313,43 @@ class MainActivity : AppCompatActivity() {
                     vuCouleur.backgroundTintList = ColorStateList.valueOf(Color.argb(a, r, g, b))
                     vuCouleur.visibility = View.VISIBLE
                     imgNfc.visibility = View.GONE
+                    dernierNomCouleur = "${resultatCouleur.nom}$suffixe"
+                    dernierCouleurArgb = Color.argb(a, r, g, b)
                 }
             } catch (e: Exception) {
                 vuCouleur.visibility = View.GONE
                 imgNfc.visibility = View.VISIBLE
+                dernierNomCouleur = null
+                dernierCouleurArgb = null
             }
         } else {
             vuCouleur.visibility = View.GONE
             imgNfc.visibility = View.VISIBLE
+            dernierNomCouleur = null
+            dernierCouleurArgb = null
         }
 
         if (infoFilament.poidsGrammes != null && infoFilament.poidsGrammes in 1..10000) {
             ajouterLigneInfo(R.drawable.ic_materiau, "Poids bobine : ${infoFilament.poidsGrammes}g")
             resumeTexte.append("Poids bobine : ${infoFilament.poidsGrammes}g\n")
+            dernierPoidsGrammes = infoFilament.poidsGrammes
+        } else {
+            dernierPoidsGrammes = null
         }
         if (infoFilament.tempBuseMin != null && infoFilament.tempBuseMax != null &&
             infoFilament.tempBuseMin in 0..500 && infoFilament.tempBuseMax in 0..500) {
             ajouterLigneInfo(R.drawable.ic_temperature, "Buse : ${infoFilament.tempBuseMin}-${infoFilament.tempBuseMax}C")
             resumeTexte.append("Temperature buse : ${infoFilament.tempBuseMin}-${infoFilament.tempBuseMax}C\n")
+            dernierTempBuseTexte = "${infoFilament.tempBuseMin}-${infoFilament.tempBuseMax}C"
+        } else {
+            dernierTempBuseTexte = null
         }
         if (infoFilament.tempPlateau != null && infoFilament.tempPlateau in 0..200) {
             ajouterLigneInfo(R.drawable.ic_temperature, "Plateau : ${infoFilament.tempPlateau}C")
             resumeTexte.append("Temperature plateau : ${infoFilament.tempPlateau}C\n")
+            dernierTempPlateau = infoFilament.tempPlateau
+        } else {
+            dernierTempPlateau = null
         }
         if (infoFilament.tempSechage != null && infoFilament.tempSechage in 0..150) {
             ajouterLigneInfo(R.drawable.ic_temperature, "Sechage : ${infoFilament.tempSechage}C / ${infoFilament.dureeSechage ?: "?"}h")
@@ -413,6 +452,140 @@ class MainActivity : AppCompatActivity() {
         intent.type = "text/plain"
         intent.putExtra(Intent.EXTRA_TEXT, dernierResume)
         startActivity(Intent.createChooser(intent, "Partager le resultat"))
+    }
+
+    private fun imprimerEtiquette() {
+        if (dernierNomFilament == null) {
+            Toast.makeText(this, "Aucun filament identifie pour l'instant, scanne d'abord un tag.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val printManager = getSystemService(Context.PRINT_SERVICE) as PrintManager
+        val adapter = object : PrintDocumentAdapter() {
+            var document: PdfDocument? = null
+
+            override fun onLayout(
+                oldAttributes: PrintAttributes?,
+                newAttributes: PrintAttributes,
+                cancellationSignal: CancellationSignal?,
+                callback: LayoutResultCallback,
+                extras: Bundle?
+            ) {
+                document = PdfDocument()
+                if (cancellationSignal?.isCanceled == true) {
+                    callback.onLayoutCancelled()
+                    return
+                }
+                val info = PrintDocumentInfo.Builder("etiquette_filament.pdf")
+                    .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
+                    .setPageCount(1)
+                    .build()
+                callback.onLayoutFinished(info, true)
+            }
+
+            override fun onWrite(
+                pages: Array<out PageRange>?,
+                destination: ParcelFileDescriptor,
+                cancellationSignal: CancellationSignal?,
+                callback: WriteResultCallback
+            ) {
+                val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create()
+                val page = document!!.startPage(pageInfo)
+                dessinerEtiquette(page.canvas)
+                document!!.finishPage(page)
+
+                try {
+                    document!!.writeTo(FileOutputStream(destination.fileDescriptor))
+                } catch (e: IOException) {
+                    callback.onWriteFailed(e.message)
+                    return
+                } finally {
+                    document!!.close()
+                }
+                callback.onWriteFinished(arrayOf(PageRange.ALL_PAGES))
+            }
+        }
+
+        printManager.print("Etiquette filament Bambu", adapter, PrintAttributes.Builder().build())
+    }
+
+    private fun dessinerEtiquette(canvas: Canvas) {
+        val margeGauche = 60f
+        var y = 90f
+
+        val paintTitre = Paint().apply {
+            color = android.graphics.Color.BLACK
+            textSize = 14f
+            isFakeBoldText = true
+        }
+        val paintMatiere = Paint().apply {
+            color = android.graphics.Color.BLACK
+            textSize = 26f
+            isFakeBoldText = true
+        }
+        val paintTexte = Paint().apply {
+            color = android.graphics.Color.DKGRAY
+            textSize = 16f
+        }
+        val paintBordure = Paint().apply {
+            color = android.graphics.Color.LTGRAY
+            style = Paint.Style.STROKE
+            strokeWidth = 2f
+        }
+        val paintSwatch = Paint().apply {
+            style = Paint.Style.FILL
+        }
+
+        // Cadre de l'etiquette (env. 8.5cm x 6cm)
+        val largeurEtiquette = 480f
+        val hauteurEtiquette = 340f
+        canvas.drawRoundRect(margeGauche, y, margeGauche + largeurEtiquette, y + hauteurEtiquette, 12f, 12f, paintBordure)
+
+        var yInterne = y + 40f
+        canvas.drawText("Bambu RFID Reader", margeGauche + 20f, yInterne, paintTitre)
+        yInterne += 40f
+
+        canvas.drawText(dernierNomFilament ?: "Filament inconnu", margeGauche + 20f, yInterne, paintMatiere)
+        yInterne += 45f
+
+        if (dernierCouleurArgb != null) {
+            paintSwatch.color = dernierCouleurArgb!!
+            canvas.drawCircle(margeGauche + 35f, yInterne - 8f, 18f, paintSwatch)
+            val paintCercleBordure = Paint().apply {
+                color = android.graphics.Color.LTGRAY
+                style = Paint.Style.STROKE
+                strokeWidth = 1.5f
+            }
+            canvas.drawCircle(margeGauche + 35f, yInterne - 8f, 18f, paintCercleBordure)
+            canvas.drawText(dernierNomCouleur ?: "", margeGauche + 65f, yInterne, paintTexte)
+            yInterne += 32f
+        }
+
+        if (dernierPoidsGrammes != null) {
+            canvas.drawText("Poids : ${dernierPoidsGrammes}g", margeGauche + 20f, yInterne, paintTexte)
+            yInterne += 28f
+        }
+
+        if (dernierTempBuseTexte != null) {
+            canvas.drawText("Buse : $dernierTempBuseTexte", margeGauche + 20f, yInterne, paintTexte)
+            yInterne += 28f
+        }
+
+        if (dernierTempPlateau != null) {
+            canvas.drawText("Plateau : ${dernierTempPlateau}C", margeGauche + 20f, yInterne, paintTexte)
+            yInterne += 28f
+        }
+
+        val paintDate = Paint().apply {
+            color = android.graphics.Color.GRAY
+            textSize = 11f
+        }
+        canvas.drawText(
+            "Scanne le ${SimpleDateFormat("dd/MM/yyyy", Locale.FRANCE).format(Date())}",
+            margeGauche + 20f,
+            y + hauteurEtiquette - 15f,
+            paintDate
+        )
     }
 
     private fun exporterDump() {

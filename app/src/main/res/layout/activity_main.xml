@@ -114,15 +114,25 @@
 
         <!-- Bouton principal -->
         <Button
-            android:id="@+id/btnExporter"
+            android:id="@+id/btnImprimerEtiquette"
             android:layout_width="match_parent"
             android:layout_height="52dp"
             android:layout_marginTop="16dp"
             android:background="@drawable/fond_bouton_principal"
-            android:text="Exporter le dernier dump"
+            android:text="Imprimer une etiquette"
             android:textColor="@color/carte_blanc"
             android:textAllCaps="false"
             android:elevation="2dp" />
+
+        <Button
+            android:id="@+id/btnExporter"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/fond_bouton_secondaire"
+            android:text="Exporter le dernier dump"
+            android:textColor="@color/bambu_teal_fonce"
+            android:textAllCaps="false" />
 
         <!-- Boutons secondaires -->
         <LinearLayout
