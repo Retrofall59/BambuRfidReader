@@ -511,79 +511,79 @@ class MainActivity : AppCompatActivity() {
 
     private fun dessinerEtiquette(canvas: Canvas) {
         val margeGauche = 60f
-        var y = 90f
+        val y = 90f
+
+        // Taille reelle d'une etiquette standard (environ 8cm x 5cm, pas un demi A4 !)
+        val largeurEtiquette = 227f
+        val hauteurEtiquette = 142f
 
         val paintTitre = Paint().apply {
-            color = android.graphics.Color.BLACK
-            textSize = 14f
-            isFakeBoldText = true
+            color = android.graphics.Color.GRAY
+            textSize = 8f
         }
         val paintMatiere = Paint().apply {
             color = android.graphics.Color.BLACK
-            textSize = 26f
+            textSize = 13f
             isFakeBoldText = true
         }
         val paintTexte = Paint().apply {
             color = android.graphics.Color.DKGRAY
-            textSize = 16f
+            textSize = 9f
         }
         val paintBordure = Paint().apply {
             color = android.graphics.Color.LTGRAY
             style = Paint.Style.STROKE
-            strokeWidth = 2f
+            strokeWidth = 1f
         }
         val paintSwatch = Paint().apply {
             style = Paint.Style.FILL
         }
 
-        // Cadre de l'etiquette (env. 8.5cm x 6cm)
-        val largeurEtiquette = 480f
-        val hauteurEtiquette = 340f
-        canvas.drawRoundRect(margeGauche, y, margeGauche + largeurEtiquette, y + hauteurEtiquette, 12f, 12f, paintBordure)
+        canvas.drawRoundRect(margeGauche, y, margeGauche + largeurEtiquette, y + hauteurEtiquette, 6f, 6f, paintBordure)
 
-        var yInterne = y + 40f
-        canvas.drawText("Bambu RFID Reader", margeGauche + 20f, yInterne, paintTitre)
-        yInterne += 40f
+        val margeInterne = margeGauche + 10f
+        var yInterne = y + 16f
+        canvas.drawText("Bambu RFID Reader", margeInterne, yInterne, paintTitre)
 
-        canvas.drawText(dernierNomFilament ?: "Filament inconnu", margeGauche + 20f, yInterne, paintMatiere)
-        yInterne += 45f
+        yInterne += 18f
+        canvas.drawText(dernierNomFilament ?: "Filament inconnu", margeInterne, yInterne, paintMatiere)
 
+        yInterne += 20f
         if (dernierCouleurArgb != null) {
             paintSwatch.color = dernierCouleurArgb!!
-            canvas.drawCircle(margeGauche + 35f, yInterne - 8f, 18f, paintSwatch)
+            canvas.drawCircle(margeInterne + 6f, yInterne - 3f, 7f, paintSwatch)
             val paintCercleBordure = Paint().apply {
                 color = android.graphics.Color.LTGRAY
                 style = Paint.Style.STROKE
-                strokeWidth = 1.5f
+                strokeWidth = 1f
             }
-            canvas.drawCircle(margeGauche + 35f, yInterne - 8f, 18f, paintCercleBordure)
-            canvas.drawText(dernierNomCouleur ?: "", margeGauche + 65f, yInterne, paintTexte)
-            yInterne += 32f
+            canvas.drawCircle(margeInterne + 6f, yInterne - 3f, 7f, paintCercleBordure)
+            canvas.drawText(dernierNomCouleur ?: "", margeInterne + 20f, yInterne, paintTexte)
+            yInterne += 15f
         }
 
         if (dernierPoidsGrammes != null) {
-            canvas.drawText("Poids : ${dernierPoidsGrammes}g", margeGauche + 20f, yInterne, paintTexte)
-            yInterne += 28f
+            canvas.drawText("Poids : ${dernierPoidsGrammes}g", margeInterne, yInterne, paintTexte)
+            yInterne += 14f
         }
 
         if (dernierTempBuseTexte != null) {
-            canvas.drawText("Buse : $dernierTempBuseTexte", margeGauche + 20f, yInterne, paintTexte)
-            yInterne += 28f
+            canvas.drawText("Buse : $dernierTempBuseTexte", margeInterne, yInterne, paintTexte)
+            yInterne += 14f
         }
 
         if (dernierTempPlateau != null) {
-            canvas.drawText("Plateau : ${dernierTempPlateau}C", margeGauche + 20f, yInterne, paintTexte)
-            yInterne += 28f
+            canvas.drawText("Plateau : ${dernierTempPlateau}C", margeInterne, yInterne, paintTexte)
         }
 
         val paintDate = Paint().apply {
-            color = android.graphics.Color.GRAY
-            textSize = 11f
+            color = android.graphics.Color.LTGRAY
+            textSize = 6f
         }
         canvas.drawText(
-            "Scanne le ${SimpleDateFormat("dd/MM/yyyy", Locale.FRANCE).format(Date())}",
-            margeGauche + 20f,
-            y + hauteurEtiquette - 15f,
+            SimpleDateFormat("dd/MM/yyyy", Locale.FRANCE).format(Date()),
+            margeInterne,
+            y + hauteurEtiquette - 8f,
             paintDate
         )
     }
