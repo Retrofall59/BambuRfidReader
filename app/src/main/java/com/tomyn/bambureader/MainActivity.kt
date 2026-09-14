@@ -311,6 +311,13 @@ class MainActivity : AppCompatActivity() {
                     val suffixe = if (resultatCouleur.estExact) "" else " (approximatif)"
                     ajouterLigneInfo(R.drawable.ic_couleur, "${resultatCouleur.nom}$suffixe")
                     resumeTexte.append("Couleur : ${resultatCouleur.nom}$suffixe (${infoFilament.couleurHex})\n")
+
+                    val referenceProduit = NomCouleur.trouverReferenceProduit(hexRGB, nomFilament ?: "")
+                    if (referenceProduit != null) {
+                        ajouterLigneInfo(R.drawable.ic_materiau, "Reference Bambu : $referenceProduit")
+                        resumeTexte.append("Reference Bambu : $referenceProduit\n")
+                    }
+
                     vuCouleur.backgroundTintList = ColorStateList.valueOf(Color.argb(a, r, g, b))
                     vuCouleur.visibility = View.VISIBLE
                     imgNfc.visibility = View.GONE

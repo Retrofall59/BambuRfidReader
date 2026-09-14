@@ -26,6 +26,15 @@ Pour verifier rapidement : installe une appli comme "NFC TagInfo" (gratuite sur 
 Store), scanne n'importe quel tag MIFARE Classic (meme un badge d'acces classique), et
 regarde si l'appli arrive a en lire le contenu. Si oui, ton telephone est compatible.
 
+## Telephones confirmes compatibles (retours utilisateurs)
+
+Cette liste s'allonge au fil des retours sur le forum. Si tu testes sur un telephone qui
+n'y est pas encore, n'hesite pas a partager ton retour pour qu'on l'ajoute.
+
+| Telephone | Statut | Source |
+|---|---|---|
+| Samsung Galaxy S20 FE | Compatible (teste sur PLA et ABS) | Retour forum - Zetif |
+
 ## Comment obtenir le .apk (le plus simple : sans rien installer)
 
 Ce projet est configure pour se compiler automatiquement sur les serveurs de GitHub

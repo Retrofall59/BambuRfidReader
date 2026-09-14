@@ -449,6 +449,53 @@ object NomCouleur {
         return traductions[nomAnglais] ?: nomAnglais
     }
 
+    // Reference produit/catalogue Bambu (le "10101" affiche entre parentheses sur leur site).
+    // ATTENTION : ce numero n'est PAS encode sur le tag RFID, c'est une reference commerciale
+    // deduite ici a partir du code hex. Verifie et complet uniquement pour la gamme PLA Basic
+    // pour l'instant - a completer au fur et a mesure pour les autres gammes si besoin.
+    private val referencesProduitPlaBasic = mapOf(
+        "FFFFFF" to "10100",
+        "000000" to "10101",
+        "A6A9AA" to "10102",
+        "8E9089" to "10103",
+        "D1D3D5" to "10104",
+        "545454" to "10105",
+        "C12E1F" to "10200",
+        "F7E6DE" to "10201",
+        "EC008C" to "10202",
+        "F55A74" to "10203",
+        "F5547C" to "10204",
+        "9D2235" to "10205",
+        "FF6A13" to "10300",
+        "FF9016" to "10301",
+        "F4EE2A" to "10400",
+        "E4BD68" to "10401",
+        "FEC600" to "10402",
+        "00AE42" to "10501",
+        "3F8E43" to "10502",
+        "BECF00" to "10503",
+        "0A2989" to "10601",
+        "5B6579" to "10602",
+        "0086D6" to "10603",
+        "0056B8" to "10604",
+        "00B1B7" to "10605",
+        "5E43B7" to "10700",
+        "482960" to "10701",
+        "9D432C" to "10800",
+        "847D48" to "10801",
+        "6F5034" to "10802"
+    )
+
+    /**
+     * Reference produit Bambu (uniquement PLA Basic pour l'instant). Retourne null si inconnue
+     * ou si la matiere detectee n'est pas du PLA Basic (pour eviter d'afficher une fausse
+     * reference sur une autre gamme non verifiee).
+     */
+    fun trouverReferenceProduit(hexRGB: String, indiceMatiere: String): String? {
+        if (!indiceMatiere.uppercase().contains("PLA BASIC")) return null
+        return referencesProduitPlaBasic[hexRGB.uppercase()]
+    }
+
     fun trouverNom(hexRGB: String, indiceMatiere: String = ""): ResultatCouleur {
         val hexNormalise = hexRGB.uppercase()
         val entrees = tableOfficielle[hexNormalise]
