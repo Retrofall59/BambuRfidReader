@@ -659,8 +659,93 @@ object NomCouleur {
         "483D8B" to "13700"
     )
 
+    // Reference produit PLA Marble
+    private val referencesProduitPlaMarble = mapOf(
+        "F7F3F0" to "13103",
+        "AD4E38" to "13201"
+    )
+
+    // Reference produit PLA Metal - convergence verifiee sur plusieurs revendeurs independants
+    private val referencesProduitPlaMetal = mapOf(
+        "43403D" to "13100",
+        "B39B84" to "13400",
+        "1D7C6A" to "13500",
+        "39699E" to "13600",
+        "AA6443" to "13800"
+    )
+
+    // Reference produit PLA Galaxy - convergence verifiee sur plusieurs revendeurs independants
+    private val referencesProduitPlaGalaxy = mapOf(
+        "684A43" to "13203",
+        "3B665E" to "13503",
+        "424379" to "13504",
+        "594177" to "13602"
+    )
+
+    // Reference produit PLA Glow - convergence verifiee sur plusieurs revendeurs independants
+    private val referencesProduitPlaGlow = mapOf(
+        "F17B8F" to "15200",
+        "FF9D5B" to "15300",
+        "F8FF80" to "15400",
+        "A1FFAC" to "15500",
+        "7AC0E9" to "15600"
+    )
+
+    // Reference produit PLA Basic Gradient - convergence verifiee. Le blanc pur (#FFFFFF) est
+    // partage par Arctic Whisper ET Solar Breeze donc volontairement omis ici (ambigu).
+    private val referencesProduitPlaGradient = mapOf(
+        "9CDBD9" to "10900",
+        "E94B3C" to "10901",
+        "54FF9B" to "10902",
+        "307FE2" to "10902",
+        "F78F77" to "10903",
+        "E4505A" to "10903",
+        "4EC939" to "10904",
+        "B6FF43" to "10904",
+        "6FCAEF" to "10905",
+        "8573DD" to "10905",
+        "ED9558" to "10906",
+        "CE4406" to "10906",
+        "E7C1D5" to "10907",
+        "8EC9E9" to "10907"
+    )
+
+    // Reference produit PLA Silk Multi-Color - convergence verifiee. 0047BB (partage entre
+    // Midnight Blaze et Neon City) et 000000 (partage entre Velvet Eclipse, Phantom Blue et
+    // d'autres gammes) volontairement omis ici (ambigus).
+    private val referencesProduitPlaSilkMulti = mapOf(
+        "FF9425" to "13901",
+        "FCA2BF" to "13901",
+        "7D1B49" to "13902",
+        "BB22A3" to "13903",
+        "60A4E8" to "13904",
+        "4CE4A0" to "13904",
+        "A34342" to "13905",
+        "F772A4" to "13906",
+        "00918B" to "13906",
+        "7F3696" to "13909",
+        "006EC9" to "13909",
+        "EC984C" to "13912",
+        "6CD4BC" to "13912",
+        "A66EB9" to "13912",
+        "D87694" to "13912",
+        "720062" to "13913",
+        "3A913F" to "13913",
+        "00629B" to "13916"
+    )
+
+    // Reference produit TPU 95A HF - convergence verifiee sur de nombreux revendeurs
+    private val referencesProduitTpu95aHf = mapOf(
+        "101820" to "51100",
+        "898D8D" to "51101",
+        "FFFFFF" to "51102",
+        "C8102E" to "51200",
+        "F3E600" to "51400",
+        "0072CE" to "51600"
+    )
+
     /**
-     * Reference produit Bambu (13 gammes verifiees pour l'instant). Retourne null si inconnue
+     * Reference produit Bambu (20 gammes verifiees pour l'instant). Retourne null si inconnue
      * ou si la matiere detectee ne correspond a aucune de ces gammes verifiees.
      */
     fun trouverReferenceProduit(hexRGB: String, indiceMatiere: String): String? {
@@ -670,12 +755,19 @@ object NomCouleur {
         if (indice.contains("ABS")) return referencesProduitAbs[hex]
         if (indice.contains("PLA PURE")) return referencesProduitPlaPure[hex]
         if (indice.contains("PLA SPARKLE")) return referencesProduitPlaSparkle[hex]
+        if (indice.contains("PLA MARBLE")) return referencesProduitPlaMarble[hex]
+        if (indice.contains("PLA METAL")) return referencesProduitPlaMetal[hex]
+        if (indice.contains("PLA GALAXY")) return referencesProduitPlaGalaxy[hex]
+        if (indice.contains("PLA GLOW")) return referencesProduitPlaGlow[hex]
+        if (indice.contains("GRADIENT")) return referencesProduitPlaGradient[hex]
+        if (indice.contains("MULTI-COLOR") || indice.contains("MULTI COLOR")) return referencesProduitPlaSilkMulti[hex]
         if (indice.contains("PLA SILK")) return referencesProduitPlaSilk[hex]
         if (indice.contains("PLA TRANSLUCENT")) return referencesProduitPlaTranslucent[hex]
         if (indice.contains("PLA WOOD")) return referencesProduitPlaWood[hex]
         if (indice.contains("PLA BASIC")) return referencesProduitPlaBasic[hex]
         if (indice.contains("PETG BASIC")) return referencesProduitPetgBasic[hex]
         if (indice.contains("TPU 90A")) return referencesProduitTpu90a[hex]
+        if (indice.contains("TPU 95A HF")) return referencesProduitTpu95aHf[hex]
         if (indice.contains("PETG HF")) return referencesProduitPetgHf[hex]
         if (indice.contains("PETG-CF") || indice.contains("PETG CF")) return referencesProduitPetgCf[hex]
         if (indice.contains("PETG TRANSLUCENT")) return referencesProduitPetgTranslucent[hex]
