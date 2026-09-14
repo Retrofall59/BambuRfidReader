@@ -289,7 +289,7 @@ object NomCouleur {
         CouleurNommee("Transparent / naturel", 240, 240, 235)
     )
 
-    data class ResultatCouleur(val nom: String, val estExact: Boolean)
+    data class ResultatCouleur(val nom: String, val nomCourt: String, val estExact: Boolean)
 
     private fun distancePerceptuelle(r1: Int, g1: Int, b1: Int, r2: Int, g2: Int, b2: Int): Double {
         val rMoyen = (r1 + r2) / 2.0
@@ -444,26 +444,43 @@ object NomCouleur {
         return if (traduction != null) "$nomAnglais ($traduction)" else nomAnglais
     }
 
+    // Pour l'etiquette imprimable : juste le francais (ou l'anglais seul si pas de traduction connue)
+    private fun traductionSeule(nomAnglais: String): String {
+        return traductions[nomAnglais] ?: nomAnglais
+    }
+
     fun trouverNom(hexRGB: String, indiceMatiere: String = ""): ResultatCouleur {
         val hexNormalise = hexRGB.uppercase()
         val entrees = tableOfficielle[hexNormalise]
         if (entrees != null) {
             if (entrees.size == 1) {
-                return ResultatCouleur("${avecTraduction(entrees[0].second)} (Bambu, officiel)", true)
+                return ResultatCouleur(
+                    "${avecTraduction(entrees[0].second)} (Bambu, officiel)",
+                    "${traductionSeule(entrees[0].second)} (Bambu, officiel)",
+                    true
+                )
             }
             val indiceNormalise = indiceMatiere.uppercase()
             val correspondance = entrees.firstOrNull { (ligne, _) ->
                 ligne.isNotEmpty() && indiceNormalise.contains(ligne.uppercase())
             }
             if (correspondance != null) {
-                return ResultatCouleur("${avecTraduction(correspondance.second)} (Bambu ${correspondance.first}, officiel)", true)
+                return ResultatCouleur(
+                    "${avecTraduction(correspondance.second)} (Bambu ${correspondance.first}, officiel)",
+                    "${traductionSeule(correspondance.second)} (Bambu ${correspondance.first}, officiel)",
+                    true
+                )
             }
             // Aucun indice de matiere ne permet de trancher : on liste toutes les options connues
             val toutesLesOptions = entrees.joinToString(" / ") { (ligne, nom) ->
                 val nomTraduit = avecTraduction(nom)
                 if (ligne.isEmpty()) nomTraduit else "$nomTraduit ($ligne)"
             }
-            return ResultatCouleur("$toutesLesOptions - Bambu, officiel", true)
+            val toutesLesOptionsCourtes = entrees.joinToString(" / ") { (ligne, nom) ->
+                val nomTraduit = traductionSeule(nom)
+                if (ligne.isEmpty()) nomTraduit else "$nomTraduit ($ligne)"
+            }
+            return ResultatCouleur("$toutesLesOptions - Bambu, officiel", "$toutesLesOptionsCourtes - Bambu, officiel", true)
         }
 
         val r = hexNormalise.substring(0, 2).toInt(16)
@@ -479,6 +496,6 @@ object NomCouleur {
                 meilleurNom = c.nom
             }
         }
-        return ResultatCouleur(meilleurNom, false)
+        return ResultatCouleur(meilleurNom, meilleurNom, false)
     }
 }
