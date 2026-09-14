@@ -486,14 +486,200 @@ object NomCouleur {
         "6F5034" to "10802"
     )
 
+    // Reference produit PLA Matte - convergence verifiee sur plusieurs revendeurs independants
+    private val referencesProduitPlaMatte = mapOf(
+        "FFFFFF" to "11100",
+        "000000" to "11101",
+        "9B9EA0" to "11102",
+        "CBC6B8" to "11103",
+        "757575" to "11104",
+        "DE4343" to "11200",
+        "E8AFCF" to "11201",
+        "BB3D43" to "11202",
+        "B15533" to "11203",
+        "F99963" to "11300",
+        "F7D959" to "11400",
+        "E8DBB7" to "11401",
+        "61C680" to "11500",
+        "68724D" to "11501",
+        "C2E189" to "11502",
+        "0078BF" to "11600",
+        "A3D8E1" to "11601",
+        "042F56" to "11602",
+        "56B7E6" to "11603",
+        "AE96D4" to "11700",
+        "D3B7A7" to "11800",
+        "7D6556" to "11801",
+        "4D3324" to "11802",
+        "AE835B" to "11803"
+    )
+
+    // Reference produit ABS (plage 40xxx, distincte de l'ABS-GF en 41xxx) - convergence verifiee
+    // sur plusieurs revendeurs independants. Incomplet (Red et Purple non confirmes pour l'instant).
+    private val referencesProduitAbs = mapOf(
+        "FFFFFF" to "40100",
+        "000000" to "40101",
+        "87909A" to "40102",
+        "FF6A13" to "40300",
+        "FFC72C" to "40402",
+        "00AE42" to "40500",
+        "789D4A" to "40502",
+        "0A2CA5" to "40600",
+        "489FDF" to "40601",
+        "0C2340" to "40602"
+    )
+
+    // Reference produit PETG Basic - convergence verifiee sur plusieurs revendeurs independants
+    private val referencesProduitPetgBasic = mapOf(
+        "000000" to "30105",
+        "FFFFFF" to "30106",
+        "7F7E83" to "30107",
+        "688197" to "30108",
+        "D6001C" to "30201",
+        "FF671F" to "30301",
+        "FCE300" to "30402",
+        "DBC8B6" to "30403",
+        "009639" to "30502",
+        "034638" to "30503",
+        "001489" to "30603",
+        "0086D6" to "30604",
+        "4F2C1D" to "30800"
+    )
+
+    // Reference produit TPU 90A - convergence verifiee, SAUF le noir (deux codes conflictuels
+    // trouves - 51107 et 51103 - probablement TPU 85A vs 90A meles sur la meme fiche produit,
+    // volontairement omis par prudence)
+    private val referencesProduitTpu90a = mapOf(
+        "FFFFEE" to "51105",
+        "9EA2A2" to "51106",
+        "D6ABFF" to "51700",
+        "7EB4E1" to "51601",
+        "5C4738" to "51800",
+        "FFFFFF" to "51900",
+        "F1AAA8" to "51901"
+    )
+
+    // Reference produit PETG HF - convergence verifiee sur plusieurs revendeurs independants
+    private val referencesProduitPetgHf = mapOf(
+        "FFFFFF" to "33100",
+        "ADB1B2" to "33101",
+        "000000" to "33102",
+        "515151" to "33103",
+        "EB3A3A" to "33200",
+        "F75403" to "33300",
+        "FFD00B" to "33400",
+        "F9DFB9" to "33401",
+        "00AE42" to "33500",
+        "6EE53C" to "33501",
+        "39541A" to "33502",
+        "002E96" to "33600",
+        "1F79E5" to "33601",
+        "875718" to "33801"
+    )
+
+    // Reference produit PETG-CF - convergence verifiee sur plusieurs revendeurs independants
+    private val referencesProduitPetgCf = mapOf(
+        "000000" to "31100",
+        "565656" to "31101",
+        "9F332A" to "31200",
+        "16B08E" to "31500",
+        "324585" to "31600",
+        "583061" to "31700"
+    )
+
+    // Reference produit PLA Pure - convergence verifiee (3D Universe, plusieurs fiches)
+    private val referencesProduitPlaPure = mapOf(
+        "FFFFFF" to "17100",
+        "000000" to "17101",
+        "F7CED7" to "17200",
+        "FFB673" to "17300",
+        "A4DBE8" to "17600"
+    )
+
+    // Reference produit PLA Silk+ - convergence verifiee sur plusieurs revendeurs independants
+    private val referencesProduitPlaSilk = mapOf(
+        "5F6367" to "13108",
+        "C8C8C8" to "13109",
+        "FFFFFF" to "13110",
+        "D02727" to "13205",
+        "BA9594" to "13206",
+        "F7ADA6" to "13207",
+        "F3CFB2" to "13404",
+        "F4A925" to "13405",
+        "018814" to "13506",
+        "96DCB9" to "13507",
+        "A8C6EE" to "13603",
+        "008BDA" to "13604",
+        "8671CB" to "13702"
+    )
+
+    // Reference produit PLA Translucent - convergence verifiee sur plusieurs revendeurs
+    private val referencesProduitPlaTranslucent = mapOf(
+        "B50011" to "13210",
+        "F5B6CD" to "13211",
+        "F74E02" to "13301",
+        "F5DBAB" to "13410",
+        "96D8AF" to "13510",
+        "B8CDE9" to "13610",
+        "0047BB" to "13611",
+        "009FA1" to "13612",
+        "8344B0" to "13710",
+        "B8ACD6" to "13711"
+    )
+
+    // Reference produit PETG Translucent - convergence verifiee sur plusieurs revendeurs
+    private val referencesProduitPetgTranslucent = mapOf(
+        "8E8E8E" to "32100",
+        "F9C1BD" to "32200",
+        "FF911A" to "32300",
+        "748C45" to "32500",
+        "77EDD7" to "32501",
+        "61B0FF" to "32600",
+        "D6ABFF" to "32700",
+        "C9A381" to "32800"
+    )
+
+    // Reference produit PLA Wood - convergence verifiee sur plusieurs revendeurs independants
+    private val referencesProduitPlaWood = mapOf(
+        "D6CCA3" to "13106",
+        "4F3F24" to "13107",
+        "4C241C" to "13204",
+        "C98935" to "13403",
+        "918669" to "13505",
+        "995F11" to "13801"
+    )
+
+    // Reference produit PLA Sparkle - convergence verifiee sur plusieurs revendeurs independants
+    private val referencesProduitPlaSparkle = mapOf(
+        "2D2B28" to "13101",
+        "8E9089" to "13102",
+        "792B36" to "13200",
+        "CEA629" to "13402",
+        "3F5443" to "13501",
+        "483D8B" to "13700"
+    )
+
     /**
-     * Reference produit Bambu (uniquement PLA Basic pour l'instant). Retourne null si inconnue
-     * ou si la matiere detectee n'est pas du PLA Basic (pour eviter d'afficher une fausse
-     * reference sur une autre gamme non verifiee).
+     * Reference produit Bambu (13 gammes verifiees pour l'instant). Retourne null si inconnue
+     * ou si la matiere detectee ne correspond a aucune de ces gammes verifiees.
      */
     fun trouverReferenceProduit(hexRGB: String, indiceMatiere: String): String? {
-        if (!indiceMatiere.uppercase().contains("PLA BASIC")) return null
-        return referencesProduitPlaBasic[hexRGB.uppercase()]
+        val hex = hexRGB.uppercase()
+        val indice = indiceMatiere.uppercase()
+        if (indice.contains("PLA MATTE")) return referencesProduitPlaMatte[hex]
+        if (indice.contains("ABS")) return referencesProduitAbs[hex]
+        if (indice.contains("PLA PURE")) return referencesProduitPlaPure[hex]
+        if (indice.contains("PLA SPARKLE")) return referencesProduitPlaSparkle[hex]
+        if (indice.contains("PLA SILK")) return referencesProduitPlaSilk[hex]
+        if (indice.contains("PLA TRANSLUCENT")) return referencesProduitPlaTranslucent[hex]
+        if (indice.contains("PLA WOOD")) return referencesProduitPlaWood[hex]
+        if (indice.contains("PLA BASIC")) return referencesProduitPlaBasic[hex]
+        if (indice.contains("PETG BASIC")) return referencesProduitPetgBasic[hex]
+        if (indice.contains("TPU 90A")) return referencesProduitTpu90a[hex]
+        if (indice.contains("PETG HF")) return referencesProduitPetgHf[hex]
+        if (indice.contains("PETG-CF") || indice.contains("PETG CF")) return referencesProduitPetgCf[hex]
+        if (indice.contains("PETG TRANSLUCENT")) return referencesProduitPetgTranslucent[hex]
+        return null
     }
 
     fun trouverNom(hexRGB: String, indiceMatiere: String = ""): ResultatCouleur {
