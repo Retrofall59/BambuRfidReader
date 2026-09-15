@@ -31,10 +31,13 @@ import android.print.PrintAttributes
 import android.print.PrintDocumentAdapter
 import android.print.PrintDocumentInfo
 import android.print.PrintManager
+import android.text.InputFilter
+import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.animation.AnimationUtils
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -64,6 +67,7 @@ class MainActivity : AppCompatActivity() {
         val nomFilament: String,
         val nomCouleur: String?,
         val couleurArgb: Int?,
+        val codeHexa: String?,
         val poidsGrammes: Int?,
         val tempBuseTexte: String?,
         val tempPlateau: Int?
@@ -72,6 +76,7 @@ class MainActivity : AppCompatActivity() {
     private val filesAttenteEtiquettes = mutableListOf<EtiquetteEnAttente>()
     private var dernierNomCouleur: String? = null
     private var dernierNomCouleurEtiquette: String? = null
+    private var dernierCodeHexa: String? = null
     private var dernierCouleurArgb: Int? = null
     private var dernierPoidsGrammes: Int? = null
     private var dernierTempBuseTexte: String? = null
@@ -103,6 +108,9 @@ class MainActivity : AppCompatActivity() {
 
         val btnHistorique = findViewById<Button>(R.id.btnHistorique)
         btnHistorique.setOnClickListener { afficherHistorique() }
+
+        val btnChercherCouleur = findViewById<Button>(R.id.btnChercherCouleur)
+        btnChercherCouleur.setOnClickListener { afficherRechercheCouleur() }
 
         demarrerPulseNfc()
 
@@ -322,6 +330,7 @@ class MainActivity : AppCompatActivity() {
                     val resultatCouleur = NomCouleur.trouverNom(hexRGB, nomFilament ?: "")
                     val suffixe = if (resultatCouleur.estExact) "" else " (approximatif)"
                     ajouterLigneInfo(R.drawable.ic_couleur, "${resultatCouleur.nom}$suffixe")
+                    ajouterLigneInfo(R.drawable.ic_couleur, "Code hexa : #$hexRGB")
                     resumeTexte.append("Couleur : ${resultatCouleur.nom}$suffixe (${infoFilament.couleurHex})\n")
 
                     val referenceProduit = NomCouleur.trouverReferenceProduit(hexRGB, nomFilament ?: "")
@@ -335,6 +344,7 @@ class MainActivity : AppCompatActivity() {
                     imgNfc.visibility = View.GONE
                     dernierNomCouleur = "${resultatCouleur.nom}$suffixe"
                     dernierNomCouleurEtiquette = "${resultatCouleur.nomCourt}$suffixe"
+                    dernierCodeHexa = "#$hexRGB"
                     dernierCouleurArgb = Color.argb(a, r, g, b)
                 }
             } catch (e: Exception) {
@@ -342,6 +352,7 @@ class MainActivity : AppCompatActivity() {
                 imgNfc.visibility = View.VISIBLE
                 dernierNomCouleur = null
                 dernierNomCouleurEtiquette = null
+                dernierCodeHexa = null
                 dernierCouleurArgb = null
             }
         } else {
@@ -349,6 +360,7 @@ class MainActivity : AppCompatActivity() {
             imgNfc.visibility = View.VISIBLE
             dernierNomCouleur = null
             dernierNomCouleurEtiquette = null
+            dernierCodeHexa = null
             dernierCouleurArgb = null
         }
 
@@ -395,6 +407,7 @@ class MainActivity : AppCompatActivity() {
                     nomFilament = nomFilament ?: "Filament inconnu",
                     nomCouleur = dernierNomCouleurEtiquette,
                     couleurArgb = dernierCouleurArgb,
+                    codeHexa = dernierCodeHexa,
                     poidsGrammes = dernierPoidsGrammes,
                     tempBuseTexte = dernierTempBuseTexte,
                     tempPlateau = dernierTempPlateau
@@ -443,6 +456,60 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             // Pas grave si l'ecriture de l'historique echoue
         }
+    }
+
+    private fun afficherRechercheCouleur() {
+        val champSaisie = EditText(this)
+        champSaisie.hint = "Ex : FF6A13 ou #FF6A13"
+        champSaisie.inputType = InputType.TYPE_CLASS_TEXT
+        champSaisie.filters = arrayOf(InputFilter.LengthFilter(7))
+
+        val conteneur = LinearLayout(this)
+        conteneur.orientation = LinearLayout.VERTICAL
+        val paddingPx = (20 * resources.displayMetrics.density).toInt()
+        conteneur.setPadding(paddingPx, paddingPx, paddingPx, 0)
+        conteneur.addView(champSaisie)
+
+        AlertDialog.Builder(this)
+            .setTitle("Chercher une couleur")
+            .setMessage("Colle le code hexadecimal d'une couleur (fournisseur tiers par exemple) pour trouver les teintes Bambu officielles les plus proches.")
+            .setView(conteneur)
+            .setPositiveButton("Chercher") { _, _ ->
+                val saisie = champSaisie.text.toString().trim().removePrefix("#").uppercase()
+                if (saisie.length != 6 || !saisie.matches(Regex("[0-9A-F]{6}"))) {
+                    Toast.makeText(this, "Code hexadecimal invalide (attendu : 6 caracteres, ex FF6A13)", Toast.LENGTH_LONG).show()
+                    return@setPositiveButton
+                }
+                afficherResultatsRecherche(saisie)
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
+    }
+
+    private fun afficherResultatsRecherche(hexSaisi: String) {
+        val correspondances = NomCouleur.trouverCorrespondancesProches(hexSaisi, 5)
+        if (correspondances.isEmpty()) {
+            AlertDialog.Builder(this)
+                .setTitle("Aucun resultat")
+                .setMessage("Aucune correspondance trouvee.")
+                .setPositiveButton("OK", null)
+                .show()
+            return
+        }
+
+        val texte = StringBuilder()
+        texte.append("Code saisi : #$hexSaisi\n\n")
+        correspondances.forEachIndexed { index, c ->
+            val etiquette = if (c.estExact) "EXACT" else "Proche"
+            texte.append("${index + 1}. ${c.nom}\n")
+            texte.append("   ${c.ligne} - #${c.hexOfficiel} ($etiquette)\n\n")
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Resultats pour #$hexSaisi")
+            .setMessage(texte.toString())
+            .setPositiveButton("Fermer", null)
+            .show()
     }
 
     private fun afficherHistorique() {
@@ -637,7 +704,11 @@ class MainActivity : AppCompatActivity() {
             }
             canvas.drawCircle(margeInterne + 5f, yInterne - 3f, 5.5f, paintCercleBordure)
             canvas.drawText(etiquette.nomCouleur ?: "", margeInterne + 16f, yInterne, paintTexte)
-            yInterne += 12f
+            yInterne += 11f
+            if (etiquette.codeHexa != null) {
+                canvas.drawText(etiquette.codeHexa, margeInterne + 16f, yInterne, paintTexte)
+                yInterne += 12f
+            }
         }
 
         if (etiquette.poidsGrammes != null) {

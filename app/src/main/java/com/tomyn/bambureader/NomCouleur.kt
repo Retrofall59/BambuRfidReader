@@ -823,4 +823,55 @@ object NomCouleur {
         }
         return ResultatCouleur(meilleurNom, meilleurNom, false)
     }
+
+    data class CorrespondanceProche(
+        val nom: String,
+        val ligne: String,
+        val hexOfficiel: String,
+        val estExact: Boolean
+    )
+
+    /**
+     * Recherche inverse : a partir d'un code hexa saisi manuellement (filament tiers par
+     * exemple), trouve les couleurs officielles Bambu les plus proches, toutes gammes
+     * confondues. Utile pour faire correspondre un tag Bambu salvage a la couleur reelle
+     * d'un filament d'une autre marque.
+     *
+     * @param hexRGB les 6 caracteres hexadecimaux R,G,B (sans le #)
+     * @param nombreResultats combien de correspondances proches retourner (les plus proches
+     *        en premier)
+     */
+    fun trouverCorrespondancesProches(hexRGB: String, nombreResultats: Int = 5): List<CorrespondanceProche> {
+        val hexNormalise = hexRGB.uppercase()
+        val r = hexNormalise.substring(0, 2).toInt(16)
+        val g = hexNormalise.substring(2, 4).toInt(16)
+        val b = hexNormalise.substring(4, 6).toInt(16)
+
+        val toutesLesEntrees = mutableListOf<Triple<String, String, String>>() // (nom, ligne, hexOfficiel)
+        for ((hex, entrees) in tableOfficielle) {
+            for ((ligne, nom) in entrees) {
+                val ligneAffichee = if (ligne.isEmpty()) "Bambu" else ligne
+                toutesLesEntrees.add(Triple(avecTraduction(nom), ligneAffichee, hex))
+            }
+        }
+
+        // Correspondance exacte : on la met en premier si elle existe, peu importe la gamme
+        val exactes = toutesLesEntrees.filter { it.third == hexNormalise }
+        val resultatsExacts = exactes.map { (nom, ligne, hex) -> CorrespondanceProche(nom, ligne, hex, true) }
+
+        // Le reste, trie par distance perceptuelle croissante
+        val approximatifs = toutesLesEntrees
+            .filter { it.third != hexNormalise }
+            .map { (nom, ligne, hex) ->
+                val rOff = hex.substring(0, 2).toInt(16)
+                val gOff = hex.substring(2, 4).toInt(16)
+                val bOff = hex.substring(4, 6).toInt(16)
+                val distance = distancePerceptuelle(r, g, b, rOff, gOff, bOff)
+                Pair(distance, CorrespondanceProche(nom, ligne, hex, false))
+            }
+            .sortedBy { it.first }
+            .map { it.second }
+
+        return (resultatsExacts + approximatifs).take(nombreResultats)
+    }
 }
